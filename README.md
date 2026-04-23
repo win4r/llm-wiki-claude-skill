@@ -117,6 +117,39 @@ The SKILL.md embeds a self-contained Python lint script that checks:
 
 Run with: ask Claude `lint wiki`. Zero external dependencies beyond Python 3 + PyYAML.
 
+## Real-world example: seeding a new sub-wiki
+
+Actual workflow used to create `~/wiki/hermes-learn/` from 13 existing Markdown notes on the desktop:
+
+```text
+~/Desktop/doc/*.md (13 Hermes practice notes, ~348 KB total)
+        │
+        ▼
+Phase 1 — scaffold ~/wiki/hermes-learn/
+  mkdir -p log raw/{articles,papers,notes,assets,refs} entities concepts comparisons queries _archive
+  Write SCHEMA.md (domain: Hermes Agent Practice; 84-tag taxonomy)
+  Write initial index.md + log/YYYYMMDD.md
+        │
+        ▼
+Phase 2 — batch ingest
+  cp ~/Desktop/doc/*.md ~/wiki/hermes-learn/raw/notes/
+  cp ~/Desktop/doc/*.html ~/wiki/hermes-learn/raw/assets/
+        │
+        ▼
+Phase 3 — compile (concepts ≠ 1-to-1 with notes)
+  2 entities:  hermes-agent, hermes-v0.10.0
+  6 concepts:  delegation (merged from 5 notes), subagent, execute-code,
+               multi-agent-emergent, dual-brain-architecture, cost-optimization
+  Result: 8 pages, 4-7 inbound wikilinks each — dense cross-reference network
+        │
+        ▼
+Phase 4 — lint pass: 0 issues
+```
+
+Key insight: **13 raw notes compiled to 8 wiki pages** (≈0.6 ratio). Five separate delegation notes merged into a single `delegation` concept — the compounding value is in the compiled structure, not 1-to-1 archival. Raw originals stay immutable in `raw/notes/` for traceability.
+
+This is the pattern for any new sub-wiki: scaffold → bulk-copy raw sources → compile concepts (not duplicate them) → lint.
+
 ## Credits
 
 - [Andrej Karpathy's LLM Wiki Gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) — the original concept
@@ -246,6 +279,39 @@ SKILL.md 内嵌了一个独立 Python lint 脚本，检查：
 - 页面大小（>1200 词 → 候选通过 `compile` 拆分）
 
 使用：对 Claude 说 `lint wiki`。外部依赖仅 Python 3 + PyYAML。
+
+## 实战示例：从现有笔记种一个新 sub-wiki
+
+真实工作流，用来把桌面 13 篇笔记做成 `~/wiki/hermes-learn/`：
+
+```text
+~/Desktop/doc/*.md (13 篇 Hermes 实践笔记，共 ~348 KB)
+        │
+        ▼
+阶段 1 — scaffold ~/wiki/hermes-learn/
+  mkdir -p log raw/{articles,papers,notes,assets,refs} entities concepts comparisons queries _archive
+  写 SCHEMA.md（domain: Hermes Agent Practice；84-tag taxonomy）
+  写初始 index.md + log/YYYYMMDD.md
+        │
+        ▼
+阶段 2 — 批量 ingest
+  cp ~/Desktop/doc/*.md ~/wiki/hermes-learn/raw/notes/
+  cp ~/Desktop/doc/*.html ~/wiki/hermes-learn/raw/assets/
+        │
+        ▼
+阶段 3 — compile（概念不是 1 对 1 映射笔记）
+  2 entities:  hermes-agent, hermes-v0.10.0
+  6 concepts:  delegation（合并自 5 篇笔记）、subagent、execute-code、
+               multi-agent-emergent、dual-brain-architecture、cost-optimization
+  结果：8 个页面，每页 4-7 个入链，稠密交叉引用网络
+        │
+        ▼
+阶段 4 — lint 通过：0 issues
+```
+
+关键洞察：**13 篇原笔记编译成 8 页 wiki**（约 0.6 比例）。5 篇独立的 delegation 笔记合并为 1 个 `delegation` concept — 复利价值在**编译后的结构**，不在 1 对 1 归档。原笔记不可变地保存在 `raw/notes/` 里，随时追溯。
+
+这是任意新 sub-wiki 的模式：scaffold → 批量拷贝 raw → compile 概念（不是复制）→ lint。
 
 ## 致谢
 
