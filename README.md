@@ -34,6 +34,43 @@ cp ~/llm-wiki-claude-skill/SKILL.md ~/.claude/skills/llm-wiki/SKILL.md
 
 Claude Code picks up the skill on next session. Verify with `/skills` — you should see `llm-wiki` in the list.
 
+## Install for other agents
+
+The `adapters/` folder contains pre-ported versions for two other agent CLIs. All three point at the same wiki under `~/wiki/` — an ingest from any agent is immediately visible to all.
+
+**Hermes Agent:**
+
+```bash
+mkdir -p ~/.hermes/skills/research/llm-wiki
+cp adapters/hermes/SKILL.md ~/.hermes/skills/research/llm-wiki/SKILL.md
+echo "WIKI_PATH=$HOME/wiki/llm-wiki" >> ~/.hermes/.env   # or any sub-wiki path
+```
+
+Hermes adapter uses `read_file` / `write_file` / `apply_patch` / `search_files` / `web_extract` / `execute_code`. Its lint script honors `$WIKI_PATH`, so a single env-var change points Hermes at any sub-wiki without editing the skill.
+
+**Codex CLI:**
+
+```bash
+mkdir -p ~/.codex/skills/llm-wiki
+cp adapters/codex/SKILL.md ~/.codex/skills/llm-wiki/SKILL.md
+```
+
+Codex adapter uses `exec_command` / `apply_patch` / `web.open` / `rg`. Default sub-wiki is `~/wiki/llm-wiki/`; to target a different sub-wiki, sed-replace the path or keep a local fork.
+
+### Tool-vocabulary mapping (for forks)
+
+| Canonical (Claude Code) | Hermes | Codex |
+|---|---|---|
+| `Read` | `read_file` | `exec_command sed -n '1,220p' …` |
+| `Write` | `write_file` | `apply_patch '*** Add File: …'` |
+| `Edit` | `apply_patch` | `apply_patch '*** Update File: …'` |
+| `Grep` | `search_files(pattern:)` | `exec_command rg -n …` |
+| `Glob` | `search_files(target: "files")` | `exec_command rg --files / find -name` |
+| `WebFetch` | `web_extract` | `web.open` + `apply_patch` (two-step) |
+| `Bash` | `execute_code` | `exec_command` |
+
+Canonical `SKILL.md` at the repo root is the source of truth; adapters are ported by sed-mapping the tool vocabulary above. When the canonical version changes, re-port the diff into each adapter.
+
 ## Usage
 
 Talk to Claude Code in natural language. The skill triggers on phrases like:
@@ -196,6 +233,43 @@ cp ~/llm-wiki-claude-skill/SKILL.md ~/.claude/skills/llm-wiki/SKILL.md
 ```
 
 下次启动 Claude Code 会自动识别。`/skills` 命令列表里应该看得到 `llm-wiki`。
+
+## 其他 agent 安装
+
+`adapters/` 目录包含针对另外两个 agent CLI 预先适配好的版本。三方都指向 `~/wiki/` 下的同一 wiki — 任何 agent 的 ingest，其他 agent 立即可见。
+
+**Hermes Agent:**
+
+```bash
+mkdir -p ~/.hermes/skills/research/llm-wiki
+cp adapters/hermes/SKILL.md ~/.hermes/skills/research/llm-wiki/SKILL.md
+echo "WIKI_PATH=$HOME/wiki/llm-wiki" >> ~/.hermes/.env   # 或任意 sub-wiki 路径
+```
+
+Hermes 适配版用 `read_file` / `write_file` / `apply_patch` / `search_files` / `web_extract` / `execute_code`。lint 脚本识别 `$WIKI_PATH`，只改环境变量就能让 Hermes 切到其他 sub-wiki，不用改 skill 文件。
+
+**Codex CLI:**
+
+```bash
+mkdir -p ~/.codex/skills/llm-wiki
+cp adapters/codex/SKILL.md ~/.codex/skills/llm-wiki/SKILL.md
+```
+
+Codex 适配版用 `exec_command` / `apply_patch` / `web.open` / `rg`。默认 sub-wiki 是 `~/wiki/llm-wiki/`；要切到别的 sub-wiki 就 sed 替换路径，或者维护本地 fork。
+
+### 工具词汇映射表（fork 参考）
+
+| Canonical (Claude Code) | Hermes | Codex |
+|---|---|---|
+| `Read` | `read_file` | `exec_command sed -n '1,220p' …` |
+| `Write` | `write_file` | `apply_patch '*** Add File: …'` |
+| `Edit` | `apply_patch` | `apply_patch '*** Update File: …'` |
+| `Grep` | `search_files(pattern:)` | `exec_command rg -n …` |
+| `Glob` | `search_files(target: "files")` | `exec_command rg --files / find -name` |
+| `WebFetch` | `web_extract` | `web.open` + `apply_patch` (两步) |
+| `Bash` | `execute_code` | `exec_command` |
+
+Repo 根目录的 `SKILL.md` 是 source of truth；adapters 通过上表的 sed 映射 port 过来。canonical 版改动后，把 diff 重新 port 到每个 adapter。
 
 ## 使用
 
