@@ -34,6 +34,18 @@ cp ~/llm-wiki-claude-skill/SKILL.md ~/.claude/skills/llm-wiki/SKILL.md
 
 Claude Code picks up the skill on next session. Verify with `/skills` — you should see `llm-wiki` in the list.
 
+### Codex variant
+
+This repository also includes a Codex-compatible variant at `codex/SKILL.md`. It keeps the same wiki workflow but maps Claude Code tools (`Read`, `Write`, `Edit`, `Grep`, `Glob`, `WebFetch`, `Bash`) to Codex equivalents (`exec_command`, `apply_patch`, and `web.open` / `web.search_query`).
+
+```bash
+git clone https://github.com/win4r/llm-wiki-claude-skill ~/llm-wiki-claude-skill
+mkdir -p ~/.codex/skills/llm-wiki
+cp ~/llm-wiki-claude-skill/codex/SKILL.md ~/.codex/skills/llm-wiki/SKILL.md
+```
+
+Restart Codex to pick up the skill.
+
 ## Usage
 
 Talk to Claude Code in natural language. The skill triggers on phrases like:
