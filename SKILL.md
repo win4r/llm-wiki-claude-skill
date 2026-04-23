@@ -1,11 +1,11 @@
 ---
 name: llm-wiki
-description: Maintain a persistent research knowledge base at ~/wiki using Karpathy's LLM Wiki pattern — interlinked markdown files for AI/LLM research, fine-tuning papers, and domain notes. Use when the user asks to ingest a paper/article/URL into the wiki, query the wiki, lint the wiki, compile/restructure the wiki (split oversized pages, merge duplicates, rebuild index), or save research notes. Distinct from Claude Code user memory (which tracks how you work) — this wiki is for domain knowledge that compounds across sessions. Triggers include "加到wiki", "ingest this", "ask the wiki", "lint wiki", "compile wiki", "restructure wiki", "清理wiki", "归档到知识库", "save to wiki", "search my notes", "检索知识库".
+description: Maintain a persistent research knowledge base at ~/wiki/llm-wiki using Karpathy's LLM Wiki pattern — interlinked markdown files for AI/LLM research, fine-tuning papers, and domain notes. Use when the user asks to ingest a paper/article/URL into the wiki, query the wiki, lint the wiki, compile/restructure the wiki (split oversized pages, merge duplicates, rebuild index), or save research notes. Distinct from Claude Code user memory (which tracks how you work) — this wiki is for domain knowledge that compounds across sessions. Triggers include "加到wiki", "ingest this", "ask the wiki", "lint wiki", "compile wiki", "restructure wiki", "清理wiki", "归档到知识库", "save to wiki", "search my notes", "检索知识库".
 ---
 
 # LLM Wiki (Claude Code)
 
-A persistent, interlinked markdown knowledge base at `~/wiki/`. Based on [Karpathy's LLM Wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f).
+A persistent, interlinked markdown knowledge base at `~/wiki/llm-wiki/`. Based on [Karpathy's LLM Wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f).
 
 Unlike RAG (which rediscovers knowledge per query), the wiki compiles knowledge once and keeps it current. Cross-references exist. Contradictions are flagged. Synthesis reflects everything ingested.
 
@@ -13,7 +13,7 @@ Unlike RAG (which rediscovers knowledge per query), the wiki compiles knowledge 
 
 | Store | Path | Contains |
 |---|---|---|
-| **Wiki** (this skill) | `~/wiki/` | Research knowledge — papers, concepts, entities, comparisons |
+| **Wiki** (this skill) | `~/wiki/llm-wiki/` | Research knowledge — papers, concepts, entities, comparisons |
 | **Memory** (Claude Code default) | `~/.claude/projects/-Users-charlesqin/memory/` | User preferences, feedback, project context |
 
 **Never mix them.** If a note describes what the user is *learning*, it goes in the wiki. If it describes how the user *works*, it goes in memory.
@@ -22,9 +22,9 @@ Unlike RAG (which rediscovers knowledge per query), the wiki compiles knowledge 
 
 Before any ingest / query / lint, read these three in order:
 
-1. `Read ~/wiki/SCHEMA.md` — domain, conventions, tag taxonomy
-2. `Read ~/wiki/index.md` — what pages exist
-3. List `~/wiki/log/` via `Glob(pattern: "log/*.md")` and `Read` the last 2–3 days — recent activity
+1. `Read ~/wiki/llm-wiki/SCHEMA.md` — domain, conventions, tag taxonomy
+2. `Read ~/wiki/llm-wiki/index.md` — what pages exist
+3. List `~/wiki/llm-wiki/log/` via `Glob(pattern: "log/*.md")` and `Read` the last 2–3 days — recent activity
 
 Skipping orientation causes duplicate pages, missed cross-references, tag sprawl, and repeated work.
 
@@ -32,22 +32,29 @@ For queries on large wikis (100+ pages), also run a `Grep` for the topic before 
 
 ## Structure
 
+**Multi-wiki container**: `~/wiki/` is a container that may hold multiple sub-wikis (e.g. `~/wiki/llm-wiki/`, future `~/wiki/<name>-wiki/`). This skill operates on the `llm-wiki` sub-wiki by default. A single Obsidian vault at the container root (`~/wiki/.obsidian/`) covers all sub-wikis, so cross-wiki `[[wikilinks]]` still work.
+
+When adding a new sub-wiki: `mkdir ~/wiki/<name>-wiki`, scaffold the same tree below, and write a domain-specific `SCHEMA.md`. Update `~/wiki/README.md` to list it.
+
 ```
-~/wiki/
-├── SCHEMA.md       # Domain, conventions, tag taxonomy (read-first)
-├── index.md        # Sectioned content catalog
-├── log/            # Per-day action log (one file per day: YYYYMMDD.md)
-├── raw/            # Immutable sources — NEVER modify
-│   ├── articles/
-│   ├── papers/
-│   ├── transcripts/
-│   ├── assets/
-│   └── refs/       # Pointer files for large binaries kept outside raw/
-├── entities/       # People, orgs, products, models
-├── concepts/       # Topics, techniques, methods
-├── comparisons/    # Side-by-side analyses
-├── queries/        # Filed query answers worth keeping
-└── _archive/       # Superseded content (kept, de-indexed)
+~/wiki/                      ← Container (Obsidian vault root)
+├── .obsidian/               ← Shared vault config (covers all sub-wikis)
+├── README.md                ← Container-level sub-wiki index
+└── llm-wiki/                ← This skill operates here by default
+    ├── SCHEMA.md            # Domain, conventions, tag taxonomy (read-first)
+    ├── index.md             # Sectioned content catalog
+    ├── log/                 # Per-day action log (YYYYMMDD.md)
+    ├── raw/                 # Immutable sources — NEVER modify
+    │   ├── articles/
+    │   ├── papers/
+    │   ├── transcripts/
+    │   ├── assets/
+    │   └── refs/            # Pointer files for large binaries kept outside raw/
+    ├── entities/            # People, orgs, products, models
+    ├── concepts/            # Topics, techniques, methods
+    ├── comparisons/         # Side-by-side analyses
+    ├── queries/             # Filed query answers worth keeping
+    └── _archive/            # Superseded content (kept, de-indexed)
 ```
 
 Raw sources in `raw/` are **immutable**. Corrections go in wiki pages, never in raw files.
@@ -55,9 +62,9 @@ Raw sources in `raw/` are **immutable**. Corrections go in wiki pages, never in 
 **Log convention**: one markdown file per day at `log/YYYYMMDD.md`. H1 is the ISO date (`# 2026-04-23`), each entry is `## [HH:MM] <op> | <subject>` with a short bullet body. Ops: `ingest`, `query`, `lint`, `compile`, `create`, `update`, `merge`, `archive`, `migrate`. Grep across history:
 
 ```bash
-grep -rh "^## \[" ~/wiki/log/ | tail -20       # recent activity
-grep -rh "^## \[.*\] lint"  ~/wiki/log/        # all lint runs
-grep -rl "dpo"              ~/wiki/log/        # days that touched dpo
+grep -rh "^## \[" ~/wiki/llm-wiki/log/ | tail -20       # recent activity
+grep -rh "^## \[.*\] lint"  ~/wiki/llm-wiki/log/        # all lint runs
+grep -rl "dpo"              ~/wiki/llm-wiki/log/        # days that touched dpo
 ```
 
 ## Page Sizing & Divide-and-Conquer
@@ -135,8 +142,8 @@ Both render in Obsidian (default settings) and in most Markdown viewers. ASCII d
 
 | Source | Tool | Destination |
 |---|---|---|
-| URL (article) | `WebFetch` | `~/wiki/raw/articles/<slug>.md` |
-| PDF / arxiv | `WebFetch` | `~/wiki/raw/papers/<slug>.md` |
+| URL (article) | `WebFetch` | `~/wiki/llm-wiki/raw/articles/<slug>.md` |
+| PDF / arxiv | `WebFetch` | `~/wiki/llm-wiki/raw/papers/<slug>.md` |
 | Pasted text | `Write` | appropriate `raw/` subdir |
 
 Name files descriptively: `raw/papers/lora-hu-2021.md`, `raw/articles/karpathy-llm-wiki-2026.md`.
@@ -145,10 +152,10 @@ Name files descriptively: `raw/papers/lora-hu-2021.md`, `raw/articles/karpathy-l
 
 **Step 3 — Check what already exists**
 
-- `Read ~/wiki/index.md`
+- `Read ~/wiki/llm-wiki/index.md`
 - `Grep` for entities/concepts across the wiki:
   ```
-  Grep(pattern: "LoRA", path: "/Users/charlesqin/wiki", glob: "*.md", output_mode: "files_with_matches")
+  Grep(pattern: "LoRA", path: "/Users/charlesqin/wiki/llm-wiki", glob: "*.md", output_mode: "files_with_matches")
   ```
 - This is the difference between a growing wiki and a pile of duplicates.
 
@@ -191,8 +198,8 @@ A single source commonly touches 5–15 wiki pages. That's the compounding effec
 
 ### 2. Query — answer a question from the wiki
 
-1. `Read ~/wiki/index.md`
-2. For wikis with 100+ pages, also `Grep` across `~/wiki/**/*.md` for key terms
+1. `Read ~/wiki/llm-wiki/index.md`
+2. For wikis with 100+ pages, also `Grep` across `~/wiki/llm-wiki/**/*.md` for key terms
 3. `Read` the relevant pages
 4. Synthesize. Cite the sources: "Based on [[lora]] and [[peft]]…"
 5. **File the answer back** if it's a substantial synthesis / comparison / deep dive:
@@ -215,7 +222,7 @@ import os, re, yaml
 from pathlib import Path
 from collections import defaultdict
 
-WIKI = Path.home() / "wiki"
+WIKI = Path.home() / "wiki" / "llm-wiki"
 DIRS = ["entities", "concepts", "comparisons", "queries"]
 
 # Collect all wiki pages
@@ -305,7 +312,7 @@ Periodic structural maintenance: split oversized pages, merge near-duplicates, r
 
 **Steps**
 
-1. Orient: `Read ~/wiki/SCHEMA.md`, `~/wiki/index.md`, and every file in the target subtree.
+1. Orient: `Read ~/wiki/llm-wiki/SCHEMA.md`, `~/wiki/llm-wiki/index.md`, and every file in the target subtree.
 2. For each page over ~1200 words: plan a split into `concepts/<topic>/index.md + <aspect>.md` per the divide-and-conquer pattern. **Confirm the plan with the user before writing** — splits are structural and expensive to reverse.
 3. For each pair of near-duplicate pages: propose a merge. Confirm, then rewrite as one.
 4. Rewrite `index.md` so every page appears exactly once under the right section, with hierarchy via indented bullets for split topics.
@@ -327,7 +334,7 @@ Claude Code tools used by this skill:
 | Operation | Tool | Notes |
 |---|---|---|
 | Read a wiki page or SCHEMA | `Read` | Use `offset`/`limit` for long files |
-| Search wiki content | `Grep` | `path: "/Users/charlesqin/wiki"`, `glob: "*.md"` |
+| Search wiki content | `Grep` | `path: "/Users/charlesqin/wiki/llm-wiki"`, `glob: "*.md"` |
 | List all pages | `Glob` | `pattern: "**/*.md"` |
 | Fetch URL/PDF | `WebFetch` | Saves markdown from the web |
 | Write new page | `Write` | Only for new files |
@@ -349,7 +356,7 @@ Claude Code tools used by this skill:
 
 ## Obsidian
 
-`~/wiki/.obsidian/` already exists. Open `~/wiki/` as an Obsidian vault for:
+The Obsidian vault is **`~/wiki/`** (the container), not any individual sub-wiki. `.obsidian/` lives at the container root so all sub-wikis share one graph view and one link namespace. Open `~/wiki/` in Obsidian for:
 - `[[wikilinks]]` as clickable links
 - Graph View for the knowledge network
 - Dataview queries like `TABLE tags FROM "concepts" WHERE contains(tags, "lora")`

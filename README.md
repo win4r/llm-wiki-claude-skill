@@ -47,9 +47,9 @@ Talk to Claude Code in natural language. The skill triggers on phrases like:
 
 ### Initializing a new wiki
 
-If `~/wiki/` doesn't exist yet, ask Claude:
+If `~/wiki/llm-wiki/` doesn't exist yet, ask Claude:
 
-> scaffold a new wiki at ~/wiki for AI research
+> scaffold a new llm-wiki sub-wiki at ~/wiki/llm-wiki/ for AI research
 
 It will create the directory tree and a starter `SCHEMA.md` customized to your domain.
 
@@ -70,25 +70,39 @@ Claude: [reads SCHEMA.md, index.md, recent log/ days]
 
 One source commonly touches 5–15 wiki pages. That's the compounding effect.
 
-## Wiki structure
+## Wiki structure (multi-wiki container)
+
+`~/wiki/` is a **container** that holds one or more sub-wikis. This skill operates on the `llm-wiki` sub-wiki by default. A single Obsidian vault at the container root covers all sub-wikis.
 
 ```
-~/wiki/
-├── SCHEMA.md       # Domain, conventions, tag taxonomy (read first on every session)
-├── index.md        # Sectioned content catalog
-├── log/            # Per-day action log (YYYYMMDD.md)
-├── raw/            # Immutable sources — NEVER modify
-│   ├── articles/
-│   ├── papers/
-│   ├── transcripts/
-│   ├── assets/
-│   └── refs/       # Pointer files for large binaries kept outside raw/
-├── entities/       # People, orgs, products, models
-├── concepts/       # Topics, techniques, methods
-├── comparisons/    # Side-by-side analyses
-├── queries/        # Filed query answers worth keeping
-└── _archive/       # Superseded content (kept, de-indexed)
+~/wiki/                      ← Container (Obsidian vault root)
+├── .obsidian/               ← Shared vault config (covers all sub-wikis)
+├── README.md                ← Container-level sub-wiki index
+└── llm-wiki/                ← This skill operates here by default
+    ├── SCHEMA.md            # Domain, conventions, tag taxonomy (read-first)
+    ├── index.md             # Sectioned content catalog
+    ├── log/                 # Per-day action log (YYYYMMDD.md)
+    ├── raw/                 # Immutable sources — NEVER modify
+    │   ├── articles/
+    │   ├── papers/
+    │   ├── transcripts/
+    │   ├── assets/
+    │   └── refs/            # Pointer files for large binaries kept outside raw/
+    ├── entities/            # People, orgs, products, models
+    ├── concepts/            # Topics, techniques, methods
+    ├── comparisons/         # Side-by-side analyses
+    ├── queries/             # Filed query answers worth keeping
+    └── _archive/            # Superseded content (kept, de-indexed)
 ```
+
+### Adding more sub-wikis later
+
+```bash
+mkdir ~/wiki/dev-wiki        # or journal-wiki, reading-wiki, etc.
+# Scaffold the same tree; define its own SCHEMA.md with a different domain
+```
+
+One Obsidian vault, one backup target, isolated taxonomies.
 
 ## Lint script
 
@@ -163,9 +177,9 @@ cp ~/llm-wiki-claude-skill/SKILL.md ~/.claude/skills/llm-wiki/SKILL.md
 
 ### 初始化新 wiki
 
-如果还没有 `~/wiki/`，告诉 Claude：
+如果还没有 `~/wiki/llm-wiki/`，告诉 Claude：
 
-> 在 ~/wiki 搭建一个新的 AI 研究知识库
+> 在 ~/wiki/llm-wiki 搭建一个新的 AI 研究知识库
 
 它会建目录树 + 为你的领域定制 `SCHEMA.md`。
 
@@ -186,25 +200,39 @@ Claude: [读 SCHEMA.md、index.md、最近几天的 log/]
 
 一个源通常会触发 5–15 个 wiki 页面的改动 —— 这就是复利效应。
 
-## 目录结构
+## 目录结构（多 wiki 容器）
+
+`~/wiki/` 是一个**容器**，包含一个或多个 sub-wiki。本 skill 默认操作 `llm-wiki` 子目录。单一 Obsidian vault 位于容器根，覆盖所有 sub-wiki。
 
 ```
-~/wiki/
-├── SCHEMA.md       # 领域、约定、tag taxonomy（每个 session 开头先读）
-├── index.md        # 分节目录
-├── log/            # 按天的操作日志（YYYYMMDD.md）
-├── raw/            # 不可变的源材料 —— 永不修改
-│   ├── articles/
-│   ├── papers/
-│   ├── transcripts/
-│   ├── assets/
-│   └── refs/       # 大二进制的指针文件（实际文件放在 wiki 之外）
-├── entities/       # 人、组织、产品、模型
-├── concepts/       # 主题、技术、方法
-├── comparisons/    # 横向对比
-├── queries/        # 有保留价值的查询结果
-└── _archive/       # 被替代的内容（保留但移出索引）
+~/wiki/                      ← 容器（Obsidian vault 根）
+├── .obsidian/               ← 共享 vault 配置（覆盖所有 sub-wiki）
+├── README.md                ← 容器级 sub-wiki 索引
+└── llm-wiki/                ← 本 skill 默认操作这里
+    ├── SCHEMA.md            # 领域、约定、tag taxonomy（每个 session 先读）
+    ├── index.md             # 分节目录
+    ├── log/                 # 按天操作日志（YYYYMMDD.md）
+    ├── raw/                 # 不可变源材料 —— 永不修改
+    │   ├── articles/
+    │   ├── papers/
+    │   ├── transcripts/
+    │   ├── assets/
+    │   └── refs/            # 大二进制指针文件（实际文件放在 wiki 之外）
+    ├── entities/            # 人、组织、产品、模型
+    ├── concepts/            # 主题、技术、方法
+    ├── comparisons/         # 横向对比
+    ├── queries/             # 有保留价值的查询结果
+    └── _archive/            # 被替代的内容（保留但移出索引）
 ```
+
+### 未来添加更多 sub-wiki
+
+```bash
+mkdir ~/wiki/dev-wiki        # 或 journal-wiki、reading-wiki 等
+# 搭建同样的目录树；定义独立的 SCHEMA.md（不同领域）
+```
+
+一个 Obsidian vault、一个备份目标、独立的 taxonomy 互不污染。
 
 ## Lint 脚本
 
