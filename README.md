@@ -58,6 +58,15 @@ cp -R adapters/codex ~/.codex/skills/llm-wiki
 
 Codex adapter uses `exec_command` / `apply_patch` / `web.open` / `rg`, plus bundled deterministic scripts for scaffold and lint. Default sub-wiki is `~/wiki/llm-wiki/`; to target a different sub-wiki, set `LLM_WIKI_PATH` or `WIKI_PATH`.
 
+Codex bundled scripts:
+
+- `llm_wiki_scaffold.py` — create a non-destructive starter wiki.
+- `llm_wiki_lint.py` — lint wiki health; supports `--json` and `--strict`.
+- `llm_wiki_ingest_arxiv.py` — ingest arXiv metadata into `raw/papers/`, generated concept summary pages, `index.md`, and daily logs.
+- `llm_wiki_repair.py` — dry-run/apply common schema migrations such as `type: paper` and missing sources.
+- `llm_wiki_compile_plan.py` — generate deterministic compile plans for oversized pages, index drift, and duplicates.
+- `llm_wiki_adapter_parity.py` — verify Claude/Hermes/Codex adapter semantic parity.
+
 ### Tool-vocabulary mapping (for forks)
 
 | Canonical (Claude Code) | Hermes | Codex |
@@ -171,6 +180,12 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 
 The fixtures cover a clean wiki, an intentionally broken wiki, archived duplicate links, CLI `--strict`, and non-destructive scaffold behavior.
 
+Release readiness is tracked by `VERSION` and checked with:
+
+```bash
+python3 scripts/check_release_ready.py
+```
+
 ## Real-world example: seeding a new sub-wiki
 
 Actual workflow used to create `~/wiki/hermes-learn/` from 13 existing Markdown notes on the desktop:
@@ -274,6 +289,15 @@ cp -R adapters/codex ~/.codex/skills/llm-wiki
 ```
 
 Codex 适配版用 `exec_command` / `apply_patch` / `web.open` / `rg`，并带有确定性的 scaffold/lint 脚本。默认 sub-wiki 是 `~/wiki/llm-wiki/`；要切到别的 sub-wiki，设置 `LLM_WIKI_PATH` 或 `WIKI_PATH`。
+
+Codex 内置脚本：
+
+- `llm_wiki_scaffold.py` — 非破坏式创建 starter wiki。
+- `llm_wiki_lint.py` — 检查 wiki 健康度；支持 `--json` 和 `--strict`。
+- `llm_wiki_ingest_arxiv.py` — 将 arXiv metadata 导入 `raw/papers/`、生成概念摘要页、更新 `index.md` 和每日日志。
+- `llm_wiki_repair.py` — dry-run/apply 常见 schema 迁移，例如 `type: paper` 和缺失 sources。
+- `llm_wiki_compile_plan.py` — 为超长页面、索引漂移、重复页面生成确定性 compile plan。
+- `llm_wiki_adapter_parity.py` — 校验 Claude/Hermes/Codex adapter 的语义一致性。
 
 ### 工具词汇映射表（fork 参考）
 
@@ -387,6 +411,12 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 ```
 
 这些 fixture 覆盖干净 wiki、故意损坏的 wiki、归档同名页面、CLI `--strict`、以及非破坏式 scaffold 行为。
+
+发布就绪状态由 `VERSION` 跟踪，并通过以下命令检查：
+
+```bash
+python3 scripts/check_release_ready.py
+```
 
 ## 实战示例：从现有笔记种一个新 sub-wiki
 

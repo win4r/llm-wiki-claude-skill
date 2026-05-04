@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <entry>
+    <id>http://arxiv.org/abs/2302.04761v1</id>
+    <updated>2023-02-09T00:00:00Z</updated>
+    <published>2023-02-09T00:00:00Z</published>
+    <title>Toolformer: Language Models Can Teach Themselves to Use Tools</title>
+    <summary>Language models can learn to use external tools via simple APIs. Toolformer demonstrates self-supervised API call annotation and improves performance on tasks requiring calculator, search, translation, and calendar tools.</summary>
+    <author><name>Timo Schick</name></author>
+    <author><name>Jane Dwivedi-Yu</name></author>
+    <category term="cs.CL" />
+  </entry>
+</feed>

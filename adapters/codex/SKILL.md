@@ -298,6 +298,9 @@ Codex tools used by this skill:
 | Update existing page | `apply_patch` | Use `*** Update File`; always bump `updated` date |
 | Scaffold a wiki | `exec_command` | `python3 ~/.codex/skills/llm-wiki/scripts/llm_wiki_scaffold.py --wiki "$WIKI"` |
 | Run lint script | `exec_command` | `python3 ~/.codex/skills/llm-wiki/scripts/llm_wiki_lint.py --wiki "$WIKI"` |
+| Ingest arXiv metadata | `exec_command` | `python3 ~/.codex/skills/llm-wiki/scripts/llm_wiki_ingest_arxiv.py --wiki "$WIKI" <arxiv-id>` |
+| Repair schema drift | `exec_command` | `python3 ~/.codex/skills/llm-wiki/scripts/llm_wiki_repair.py --wiki "$WIKI" --apply` |
+| Plan compile work | `exec_command` | `python3 ~/.codex/skills/llm-wiki/scripts/llm_wiki_compile_plan.py --wiki "$WIKI" --json` |
 
 ## Pitfalls
 

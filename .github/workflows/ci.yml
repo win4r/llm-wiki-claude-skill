@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile Python scripts
+        run: |
+          python3 -m py_compile \
+            adapters/codex/scripts/*.py \
+            tests/test_*.py \
+            scripts/*.py
+      - name: Run regression and E2E tests
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'test_*.py'
+      - name: Check adapter parity
+        run: python3 adapters/codex/scripts/llm_wiki_adapter_parity.py
+      - name: Check release readiness
+        run: python3 scripts/check_release_ready.py
+      - name: Optional Codex skill validation
+        run: |
+          if [ -f "$HOME/.codex/skills/.system/skill-creator/scripts/quick_validate.py" ]; then
+            python3 "$HOME/.codex/skills/.system/skill-creator/scripts/quick_validate.py" .
+            python3 "$HOME/.codex/skills/.system/skill-creator/scripts/quick_validate.py" adapters/codex
+          else
+            echo "Codex quick_validate.py not available in CI; skipped."
+          fi

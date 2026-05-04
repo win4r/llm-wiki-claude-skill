@@ -9,6 +9,7 @@ the frontmatter shapes used by this skill.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import sys
@@ -78,6 +79,11 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=50,
         help="Maximum items to print per issue category.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print a machine-readable JSON report instead of text.",
     )
     return parser.parse_args()
 
@@ -350,6 +356,8 @@ def lint(wiki: Path) -> tuple[dict[str, list[str]], int]:
             resolved, status = resolver.resolve(raw_link)
             if resolved == "":
                 continue
+            if status == "case_mismatch":
+                append_issue(issues, "case_mismatch_links", f"{rel} -> [[{raw_link}]]")
             if resolved:
                 outbound_count += 1
                 inbound[resolved].add(rel)
@@ -357,8 +365,6 @@ def lint(wiki: Path) -> tuple[dict[str, list[str]], int]:
                 append_issue(issues, "broken_links", f"{rel} -> [[{raw_link}]]")
             elif status == "ambiguous":
                 append_issue(issues, "ambiguous_links", f"{rel} -> [[{raw_link}]]")
-            elif status == "case_mismatch":
-                append_issue(issues, "case_mismatch_links", f"{rel} -> [[{raw_link}]]")
 
         if outbound_count < 2:
             append_issue(issues, "low_outbound_links", f"{rel}: {outbound_count} outbound links")
@@ -369,6 +375,15 @@ def lint(wiki: Path) -> tuple[dict[str, list[str]], int]:
         rel_stem = Path(rel).name
         if f"[[{rel}" not in index_text and f"[[{rel_stem}" not in index_text:
             append_issue(issues, "not_indexed", rel)
+
+    # The root index is the canonical navigation page. Count its wikilinks as
+    # inbound links so newly ingested pages are not false-positive orphans.
+    index_path = wiki / "index.md"
+    if index_path.exists():
+        for raw_link in WIKILINK_RE.findall(index_path.read_text(encoding="utf-8")):
+            resolved, _ = resolver.resolve(raw_link)
+            if resolved:
+                inbound[resolved].add("index")
 
     for path in content_pages:
         rel = rel_key(wiki, path)
@@ -394,11 +409,27 @@ def print_report(wiki: Path, issues: dict[str, list[str]], page_count: int, max_
     return total
 
 
+def build_report(wiki: Path, issues: dict[str, list[str]], page_count: int) -> dict[str, Any]:
+    total = sum(len(items) for items in issues.values())
+    return {
+        "wiki": str(wiki.expanduser().resolve()),
+        "pages_checked": page_count,
+        "total_issues": total,
+        "issues": issues,
+        "status": "ok" if total == 0 else "issues_found",
+    }
+
+
 def main() -> int:
     args = parse_args()
     wiki = args.wiki.expanduser()
     issues, page_count = lint(wiki)
-    total = print_report(wiki, issues, page_count, args.max_items)
+    if args.json:
+        report = build_report(wiki, issues, page_count)
+        print(json.dumps(report, indent=2, sort_keys=True))
+        total = int(report["total_issues"])
+    else:
+        total = print_report(wiki, issues, page_count, args.max_items)
     if args.strict and total:
         return 1
     return 0
