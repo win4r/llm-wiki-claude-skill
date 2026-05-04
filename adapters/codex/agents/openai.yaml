@@ -1,0 +1,4 @@
+interface:
+  display_name: "LLM Wiki"
+  short_description: "Maintain compiled Markdown research wikis"
+  default_prompt: "Use $llm-wiki to ingest this source into my research wiki."

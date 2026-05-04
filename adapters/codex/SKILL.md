@@ -1,6 +1,6 @@
 ---
 name: llm-wiki
-description: Maintain a persistent research knowledge base at ~/wiki/llm-wiki using Karpathy's LLM Wiki pattern — interlinked markdown files for AI/LLM research, fine-tuning papers, and domain notes. Use when the user asks to ingest a paper/article/URL into the wiki, query the wiki, lint the wiki, compile/restructure the wiki (split oversized pages, merge duplicates, rebuild index), or save research notes. Distinct from Codex session memory (which tracks temporary working context) — this wiki is for durable research knowledge that compounds across sessions and across tools. Triggers include "加到wiki", "ingest this", "ask the wiki", "lint wiki", "compile wiki", "restructure wiki", "清理wiki", "归档到知识库", "save to wiki", "search my notes", "检索知识库".
+description: Maintain a persistent research knowledge base at ~/wiki/llm-wiki using Karpathy's LLM Wiki pattern — interlinked markdown files for AI/LLM research, fine-tuning papers, and domain notes. Use when the user asks to ingest a paper/article/URL into the wiki, query the wiki, lint the wiki, compile/restructure the wiki (split oversized pages, merge duplicates, rebuild index), scaffold a new wiki, or save research notes. Distinct from Codex session memory (which tracks temporary working context) — this wiki is for durable research knowledge that compounds across sessions and across tools. Triggers include "加到wiki", "ingest this", "ask the wiki", "lint wiki", "compile wiki", "restructure wiki", "清理wiki", "归档到知识库", "save to wiki", "search my notes", "检索知识库", "scaffold wiki".
 ---
 
 # LLM Wiki (Codex)
@@ -13,28 +13,44 @@ Unlike RAG (which rediscovers knowledge per query), the wiki compiles knowledge 
 
 | Store | Scope | Contains |
 |---|---|---|
-| **Wiki** (this skill) | `~/wiki/llm-wiki/` | Shared, cross-session research knowledge — papers, concepts, entities, comparisons |
+| **Wiki** (this skill) | `$LLM_WIKI_PATH`, `$WIKI_PATH`, or `~/wiki/llm-wiki/` | Shared, cross-session research knowledge — papers, concepts, entities, comparisons |
 | **Codex session memory** | current thread / transient working context | Temporary task state, scratch notes, open questions, one-off execution context |
 
 **Never mix them.** The wiki is a persistent research knowledge base shared across Claude Code, Hermes Agent, Obsidian, and Codex. Do not store transient session state in it: scratch plans, shell breadcrumbs, temporary reminders, or one-off TODOs belong in the current Codex session, not the wiki.
 
+## Wiki Path
+
+Resolve the active wiki path once per task and reuse it in every command:
+
+```bash
+WIKI="${LLM_WIKI_PATH:-${WIKI_PATH:-$HOME/wiki/llm-wiki}}"
+```
+
+Default is `~/wiki/llm-wiki/`. Use `$LLM_WIKI_PATH` or `$WIKI_PATH` to target another sub-wiki without editing this skill.
+
 ## Orient Before Acting (every session)
 
-Before any ingest / query / lint, read these three in order:
+Before any ingest / query / lint, read these three in order. If the wiki does not exist and the user asked to create or scaffold one, run the bundled scaffold script first.
 
-1. `exec_command`: `sed -n '1,220p' ~/wiki/llm-wiki/SCHEMA.md` — domain, conventions, tag taxonomy
-2. `exec_command`: `sed -n '1,220p' ~/wiki/llm-wiki/index.md` — what pages exist
-3. `exec_command`: `ls -1 ~/wiki/llm-wiki/log/ | tail -n 3`, then read the last 2–3 daily logs with `sed -n '1,220p' ~/wiki/llm-wiki/log/YYYYMMDD.md` — recent activity
+1. `exec_command`: `WIKI="${LLM_WIKI_PATH:-${WIKI_PATH:-$HOME/wiki/llm-wiki}}"; sed -n '1,220p' "$WIKI/SCHEMA.md"` — domain, conventions, tag taxonomy
+2. `exec_command`: `WIKI="${LLM_WIKI_PATH:-${WIKI_PATH:-$HOME/wiki/llm-wiki}}"; sed -n '1,220p' "$WIKI/index.md"` — what pages exist
+3. `exec_command`: `WIKI="${LLM_WIKI_PATH:-${WIKI_PATH:-$HOME/wiki/llm-wiki}}"; ls -1 "$WIKI/log" | tail -n 3`, then read the last 2–3 daily logs with `sed -n '1,220p' "$WIKI/log/YYYYMMDD.md"` — recent activity
 
 Skipping orientation causes duplicate pages, missed cross-references, tag sprawl, and repeated work.
 
-For queries on large wikis (100+ pages), also run `exec_command` with `rg -n "<topic>" ~/wiki/llm-wiki -g '*.md'` before creating anything new.
+For queries on large wikis (100+ pages), also run `exec_command` with `rg -n "<topic>" "$WIKI" -g '*.md'` before creating anything new.
 
 ## Structure
 
-**Multi-wiki container**: `~/wiki/` is a container that may hold multiple sub-wikis (e.g. `~/wiki/llm-wiki/`, `~/wiki/hermes-learn/`, future `~/wiki/<name>-wiki/`). This skill operates on the `llm-wiki` sub-wiki by default. A single Obsidian vault at the container root (`~/wiki/.obsidian/`) covers all sub-wikis, so cross-wiki `[[wikilinks]]` still work.
+**Multi-wiki container**: `~/wiki/` is a container that may hold multiple sub-wikis (e.g. `~/wiki/llm-wiki/`, `~/wiki/hermes-learn/`, future `~/wiki/<name>-wiki/`). This skill operates on `$WIKI` (`~/wiki/llm-wiki/` by default). A single Obsidian vault at the container root (`~/wiki/.obsidian/`) covers all sub-wikis, so cross-wiki `[[wikilinks]]` still work.
 
-When adding a new sub-wiki: `mkdir ~/wiki/<name>-wiki`, scaffold the same tree below, write a domain-specific `SCHEMA.md`, and update `~/wiki/README.md` to list it.
+When adding a new sub-wiki, prefer the bundled script:
+
+```bash
+python3 ~/.codex/skills/llm-wiki/scripts/llm_wiki_scaffold.py --wiki "$HOME/wiki/<name>-wiki" --domain "<domain>"
+```
+
+It creates the tree below, starter `SCHEMA.md`, `index.md`, today's log file, and a container `README.md` if missing.
 
 ```
 ~/wiki/                      ← Container (Obsidian vault root)
@@ -62,9 +78,10 @@ Raw sources in `raw/` are **immutable**. Corrections go in wiki pages, never in 
 **Log convention**: one markdown file per day at `log/YYYYMMDD.md`. H1 is the ISO date (`# 2026-04-23`), each entry is `## [HH:MM] <op> | <subject>` with a short bullet body. Ops: `ingest`, `query`, `lint`, `compile`, `create`, `update`, `merge`, `archive`, `migrate`. Grep across history:
 
 ```bash
-grep -rh "^## \[" ~/wiki/llm-wiki/log/ | tail -20       # recent activity
-grep -rh "^## \[.*\] lint"  ~/wiki/llm-wiki/log/        # all lint runs
-grep -rl "dpo"              ~/wiki/llm-wiki/log/        # days that touched dpo
+WIKI="${LLM_WIKI_PATH:-${WIKI_PATH:-$HOME/wiki/llm-wiki}}"
+grep -rh "^## \[" "$WIKI/log/" | tail -20       # recent activity
+grep -rh "^## \[.*\] lint" "$WIKI/log/"         # all lint runs
+grep -rl "dpo" "$WIKI/log/"                     # days that touched dpo
 ```
 
 ## Page Sizing & Divide-and-Conquer
@@ -142,8 +159,8 @@ Both render in Obsidian (default settings) and in most Markdown viewers. ASCII d
 
 | Source | Tool | Destination |
 |---|---|---|
-| URL (article) | `web.open` or `web.search_query`, then `apply_patch` | `~/wiki/llm-wiki/raw/articles/<slug>.md` |
-| PDF / arxiv | `web.open` or `exec_command` (`curl -L`), then `apply_patch` | `~/wiki/llm-wiki/raw/papers/<slug>.md` |
+| URL (article) | `web.open` or `web.search_query`, then `apply_patch` | `$WIKI/raw/articles/<slug>.md` |
+| PDF / arxiv | `web.open` or `exec_command` (`curl -L`), then `apply_patch` | `$WIKI/raw/papers/<slug>.md` |
 | Pasted text | `apply_patch` (`*** Add File`) | appropriate `raw/` subdir |
 
 Name files descriptively: `raw/papers/lora-hu-2021.md`, `raw/articles/karpathy-llm-wiki-2026.md`.
@@ -154,10 +171,11 @@ Codex does not have a direct `WebFetch` equivalent that both browses and writes 
 
 **Step 3 — Check what already exists**
 
-- `exec_command`: `sed -n '1,220p' ~/wiki/llm-wiki/index.md`
+- `exec_command`: `WIKI="${LLM_WIKI_PATH:-${WIKI_PATH:-$HOME/wiki/llm-wiki}}"; sed -n '1,220p' "$WIKI/index.md"`
 - `exec_command` with `rg` for entities/concepts across the wiki:
   ```bash
-  rg -l "LoRA" ~/wiki/llm-wiki -g '*.md'
+  WIKI="${LLM_WIKI_PATH:-${WIKI_PATH:-$HOME/wiki/llm-wiki}}"
+  rg -l "LoRA" "$WIKI" -g '*.md'
   ```
 - This is the difference between a growing wiki and a pile of duplicates.
 
@@ -200,8 +218,8 @@ A single source commonly touches 5–15 wiki pages. That's the compounding effec
 
 ### 2. Query — answer a question from the wiki
 
-1. `exec_command`: `sed -n '1,220p' ~/wiki/llm-wiki/index.md`
-2. For wikis with 100+ pages, also `exec_command`: `rg -n "<term>" ~/wiki/llm-wiki -g '*.md'`
+1. `exec_command`: `WIKI="${LLM_WIKI_PATH:-${WIKI_PATH:-$HOME/wiki/llm-wiki}}"; sed -n '1,220p' "$WIKI/index.md"`
+2. For wikis with 100+ pages, also `exec_command`: `rg -n "<term>" "$WIKI" -g '*.md'`
 3. `exec_command` to read the relevant pages with `sed -n` or `cat`
 4. Synthesize. Cite the sources: "Based on [[lora]] and [[peft]]…"
 5. **File the answer back** if it's a substantial synthesis / comparison / deep dive:
@@ -216,85 +234,22 @@ A single source commonly touches 5–15 wiki pages. That's the compounding effec
 
 ### 3. Lint — audit wiki health
 
-Run a Python script via `exec_command` for programmatic checks. Inline template:
+Run the bundled lint script via `exec_command`:
 
 ```bash
-python3 <<'EOF'
-import os, re, yaml
-from pathlib import Path
-from collections import defaultdict
-
-WIKI = Path.home() / "wiki"
-DIRS = ["entities", "concepts", "comparisons", "queries"]
-
-# Collect all wiki pages
-pages = {}
-for d in DIRS:
-    for p in (WIKI / d).glob("*.md"):
-        pages[p.stem] = p
-
-# Extract wikilinks and frontmatter
-inbound = defaultdict(set)
-issues = {"orphans": [], "broken_links": [], "missing_frontmatter": [], "unknown_tags": []}
-
-# Load taxonomy from SCHEMA.md
-schema = (WIKI / "SCHEMA.md").read_text()
-taxonomy = set(re.findall(r"^- ([a-zA-Z0-9\-_, ]+)", schema, re.M))
-taxonomy = {t.strip() for chunk in taxonomy for t in chunk.split(",")}
-
-for name, path in pages.items():
-    text = path.read_text()
-    # Parse frontmatter
-    fm_match = re.match(r"^---\n(.*?)\n---", text, re.S)
-    if not fm_match:
-        issues["missing_frontmatter"].append(str(path))
-        continue
-    try:
-        fm = yaml.safe_load(fm_match.group(1))
-    except Exception:
-        issues["missing_frontmatter"].append(str(path))
-        continue
-    # Check required fields
-    required = {"title", "created", "updated", "type", "tags"}
-    if not required.issubset(fm or {}):
-        issues["missing_frontmatter"].append(f"{path} (missing: {required - set(fm or {})})")
-    # Check tags against taxonomy
-    for tag in (fm or {}).get("tags") or []:
-        if tag not in taxonomy:
-            issues["unknown_tags"].append(f"{path}: {tag}")
-    # Wikilinks
-    for link in re.findall(r"\[\[([^\]]+)\]\]", text):
-        target = link.split("|")[0].split("#")[0].strip()
-        if target in pages:
-            inbound[target].add(name)
-        else:
-            issues["broken_links"].append(f"{path} -> [[{target}]]")
-
-# Orphans: zero inbound links
-for name in pages:
-    if not inbound[name]:
-        issues["orphans"].append(str(pages[name]))
-
-# Index completeness
-index_text = (WIKI / "index.md").read_text()
-for name, path in pages.items():
-    if name not in index_text:
-        issues.setdefault("not_indexed", []).append(str(path))
-
-# Report
-for k, v in issues.items():
-    print(f"\n## {k} ({len(v)})")
-    for item in v[:20]:
-        print(f"  - {item}")
-    if len(v) > 20:
-        print(f"  ... and {len(v)-20} more")
-EOF
+WIKI="${LLM_WIKI_PATH:-${WIKI_PATH:-$HOME/wiki/llm-wiki}}"
+python3 ~/.codex/skills/llm-wiki/scripts/llm_wiki_lint.py --wiki "$WIKI"
 ```
 
-Other checks (add or run separately):
-- **Stale pages**: `updated` date >90 days ago
-- **Page size**: >1200 words → candidate for splitting via `compile` (see Page Sizing & Divide-and-Conquer)
-- **Log rotation**: not needed — daily `log/YYYYMMDD.md` files stay naturally small and git-diff-friendly
+Use `--strict` when lint is a validation gate and should exit non-zero if any issue is found. The script checks:
+
+- Required root files and directories
+- Frontmatter shape and required fields, including `sources`
+- Tag taxonomy from `SCHEMA.md`
+- Broken, ambiguous, and case-mismatched wikilinks
+- Pages with fewer than 2 outbound links
+- Orphans, index completeness, oversized pages, and stale pages
+- Source paths that point at missing files
 
 Report findings grouped by severity: broken links > missing frontmatter > orphans > unknown tags > stale. Append to `log/<today-YYYYMMDD>.md`:
 ```
@@ -314,7 +269,7 @@ Periodic structural maintenance: split oversized pages, merge near-duplicates, r
 
 **Steps**
 
-1. Orient with `exec_command`: read `~/wiki/llm-wiki/SCHEMA.md`, `~/wiki/llm-wiki/index.md`, and every file in the target subtree.
+1. Orient with `exec_command`: read `$WIKI/SCHEMA.md`, `$WIKI/index.md`, and every file in the target subtree.
 2. For each page over ~1200 words: plan a split into `concepts/<topic>/index.md + <aspect>.md` per the divide-and-conquer pattern. **Confirm the plan with the user before writing** — splits are structural and expensive to reverse.
 3. For each pair of near-duplicate pages: propose a merge. Confirm, then rewrite as one.
 4. Rewrite `index.md` so every page appears exactly once under the right section, with hierarchy via indented bullets for split topics.
@@ -336,16 +291,18 @@ Codex tools used by this skill:
 | Operation | Tool | Notes |
 |---|---|---|
 | Read a wiki page or SCHEMA | `exec_command` | Prefer `sed -n 'start,endp'` or `cat` for local files |
-| Search wiki content | `exec_command` | Prefer `rg -n "<term>" ~/wiki/llm-wiki -g '*.md'` |
-| List all pages | `exec_command` | Prefer `rg --files ~/wiki/llm-wiki` or `find ~/wiki/llm-wiki -name '*.md'` |
+| Search wiki content | `exec_command` | Prefer `rg -n "<term>" "$WIKI" -g '*.md'` |
+| List all pages | `exec_command` | Prefer `rg --files "$WIKI"` or `find "$WIKI" -name '*.md'` |
 | Fetch URL/PDF | `web.open` / `web.search_query` / `exec_command` | Use `curl -L` via `exec_command` when you need a local download |
 | Write new page | `apply_patch` | Use `*** Add File` |
 | Update existing page | `apply_patch` | Use `*** Update File`; always bump `updated` date |
-| Run lint script | `exec_command` | Python script above |
+| Scaffold a wiki | `exec_command` | `python3 ~/.codex/skills/llm-wiki/scripts/llm_wiki_scaffold.py --wiki "$WIKI"` |
+| Run lint script | `exec_command` | `python3 ~/.codex/skills/llm-wiki/scripts/llm_wiki_lint.py --wiki "$WIKI"` |
 
 ## Pitfalls
 
 - **Never modify `raw/`** — sources are immutable, corrections live in wiki pages
+- **Always operate on `$WIKI`, not the `~/wiki/` container root** — otherwise lint and edits can cross sub-wiki boundaries
 - **Always orient first** — SCHEMA + index + recent log, every new session. Skipping causes duplicates.
 - **Always update index.md and today's `log/YYYYMMDD.md`** — these are the navigational backbone; skipping makes the wiki decay
 - **Don't create pages for passing mentions** — follow SCHEMA thresholds (2+ sources OR central to one)

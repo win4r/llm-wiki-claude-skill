@@ -51,11 +51,12 @@ Hermes adapter uses `read_file` / `write_file` / `apply_patch` / `search_files` 
 **Codex CLI:**
 
 ```bash
-mkdir -p ~/.codex/skills/llm-wiki
-cp adapters/codex/SKILL.md ~/.codex/skills/llm-wiki/SKILL.md
+rm -rf ~/.codex/skills/llm-wiki
+mkdir -p ~/.codex/skills
+cp -R adapters/codex ~/.codex/skills/llm-wiki
 ```
 
-Codex adapter uses `exec_command` / `apply_patch` / `web.open` / `rg`. Default sub-wiki is `~/wiki/llm-wiki/`; to target a different sub-wiki, sed-replace the path or keep a local fork.
+Codex adapter uses `exec_command` / `apply_patch` / `web.open` / `rg`, plus bundled deterministic scripts for scaffold and lint. Default sub-wiki is `~/wiki/llm-wiki/`; to target a different sub-wiki, set `LLM_WIKI_PATH` or `WIKI_PATH`.
 
 ### Tool-vocabulary mapping (for forks)
 
@@ -69,7 +70,7 @@ Codex adapter uses `exec_command` / `apply_patch` / `web.open` / `rg`. Default s
 | `WebFetch` | `web_extract` | `web.open` + `apply_patch` (two-step) |
 | `Bash` | `execute_code` | `exec_command` |
 
-Canonical `SKILL.md` at the repo root is the source of truth; adapters are ported by sed-mapping the tool vocabulary above. When the canonical version changes, re-port the diff into each adapter.
+Canonical `SKILL.md` at the repo root is the conceptual source of truth. Adapters should keep the same wiki model and operational semantics, but they may add agent-specific resources such as `scripts/` or `agents/openai.yaml`; do not blindly sed-map over those resources.
 
 ## Usage
 
@@ -84,11 +85,17 @@ Talk to Claude Code in natural language. The skill triggers on phrases like:
 
 ### Initializing a new wiki
 
-If `~/wiki/llm-wiki/` doesn't exist yet, ask Claude:
+If `~/wiki/llm-wiki/` doesn't exist yet, ask the agent:
 
 > scaffold a new llm-wiki sub-wiki at ~/wiki/llm-wiki/ for AI research
 
-It will create the directory tree and a starter `SCHEMA.md` customized to your domain.
+The Codex adapter can also run:
+
+```bash
+python3 ~/.codex/skills/llm-wiki/scripts/llm_wiki_scaffold.py --wiki "$HOME/wiki/llm-wiki" --domain "AI/LLM research"
+```
+
+It will create the directory tree, a starter `SCHEMA.md`, `index.md`, today's log file, and a container `README.md` if missing.
 
 ### Example ingest flow
 
@@ -251,11 +258,12 @@ Hermes 适配版用 `read_file` / `write_file` / `apply_patch` / `search_files` 
 **Codex CLI:**
 
 ```bash
-mkdir -p ~/.codex/skills/llm-wiki
-cp adapters/codex/SKILL.md ~/.codex/skills/llm-wiki/SKILL.md
+rm -rf ~/.codex/skills/llm-wiki
+mkdir -p ~/.codex/skills
+cp -R adapters/codex ~/.codex/skills/llm-wiki
 ```
 
-Codex 适配版用 `exec_command` / `apply_patch` / `web.open` / `rg`。默认 sub-wiki 是 `~/wiki/llm-wiki/`；要切到别的 sub-wiki 就 sed 替换路径，或者维护本地 fork。
+Codex 适配版用 `exec_command` / `apply_patch` / `web.open` / `rg`，并带有确定性的 scaffold/lint 脚本。默认 sub-wiki 是 `~/wiki/llm-wiki/`；要切到别的 sub-wiki，设置 `LLM_WIKI_PATH` 或 `WIKI_PATH`。
 
 ### 工具词汇映射表（fork 参考）
 
@@ -269,7 +277,7 @@ Codex 适配版用 `exec_command` / `apply_patch` / `web.open` / `rg`。默认 s
 | `WebFetch` | `web_extract` | `web.open` + `apply_patch` (两步) |
 | `Bash` | `execute_code` | `exec_command` |
 
-Repo 根目录的 `SKILL.md` 是 source of truth；adapters 通过上表的 sed 映射 port 过来。canonical 版改动后，把 diff 重新 port 到每个 adapter。
+Repo 根目录的 `SKILL.md` 是概念 source of truth。各 adapter 要保持同一套 wiki 模型和操作语义，但可以有 agent 专属资源，例如 `scripts/` 或 `agents/openai.yaml`；不要把 sed 映射直接覆盖这些资源。
 
 ## 使用
 
@@ -284,11 +292,17 @@ Repo 根目录的 `SKILL.md` 是 source of truth；adapters 通过上表的 sed 
 
 ### 初始化新 wiki
 
-如果还没有 `~/wiki/llm-wiki/`，告诉 Claude：
+如果还没有 `~/wiki/llm-wiki/`，告诉 agent：
 
 > 在 ~/wiki/llm-wiki 搭建一个新的 AI 研究知识库
 
-它会建目录树 + 为你的领域定制 `SCHEMA.md`。
+Codex 适配版也可以直接运行：
+
+```bash
+python3 ~/.codex/skills/llm-wiki/scripts/llm_wiki_scaffold.py --wiki "$HOME/wiki/llm-wiki" --domain "AI/LLM research"
+```
+
+它会建目录树、starter `SCHEMA.md`、`index.md`、当天日志文件，并在需要时创建容器级 `README.md`。
 
 ### Ingest 流程示例
 
