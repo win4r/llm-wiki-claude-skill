@@ -161,6 +161,16 @@ The SKILL.md embeds a self-contained Python lint script that checks:
 
 Run with: ask Claude `lint wiki`. Zero external dependencies beyond Python 3 + PyYAML.
 
+### Codex adapter regression tests
+
+The Codex adapter has automated fixtures for scaffold/lint behavior:
+
+```bash
+python3 -m unittest discover -s tests -p 'test_*.py'
+```
+
+The fixtures cover a clean wiki, an intentionally broken wiki, archived duplicate links, CLI `--strict`, and non-destructive scaffold behavior.
+
 ## Real-world example: seeding a new sub-wiki
 
 Actual workflow used to create `~/wiki/hermes-learn/` from 13 existing Markdown notes on the desktop:
@@ -367,6 +377,16 @@ SKILL.md 内嵌了一个独立 Python lint 脚本，检查：
 - 页面大小（>1200 词 → 候选通过 `compile` 拆分）
 
 使用：对 Claude 说 `lint wiki`。外部依赖仅 Python 3 + PyYAML。
+
+### Codex 适配版回归测试
+
+Codex 适配版包含用于 scaffold/lint 行为的自动化 fixture：
+
+```bash
+python3 -m unittest discover -s tests -p 'test_*.py'
+```
+
+这些 fixture 覆盖干净 wiki、故意损坏的 wiki、归档同名页面、CLI `--strict`、以及非破坏式 scaffold 行为。
 
 ## 实战示例：从现有笔记种一个新 sub-wiki
 
