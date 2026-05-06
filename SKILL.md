@@ -225,61 +225,121 @@ from collections import defaultdict
 WIKI = Path.home() / "wiki" / "llm-wiki"
 DIRS = ["entities", "concepts", "comparisons", "queries"]
 
-# Collect all wiki pages
-pages = {}
+# Collect all wiki pages — rglob picks up split-page subfolders (concepts/<topic>/<aspect>.md).
+# Pages are keyed by relative path for uniqueness; a stem-to-paths multimap supports flat [[wikilinks]].
+pages = {}                          # rel-path str -> Path
+stem_to_paths = defaultdict(list)   # stem -> [rel-path str]
 for d in DIRS:
-    for p in (WIKI / d).glob("*.md"):
-        pages[p.stem] = p
+    for p in (WIKI / d).rglob("*.md"):
+        rel = str(p.relative_to(WIKI))
+        pages[rel] = p
+        stem_to_paths[p.stem].append(rel)
 
-# Extract wikilinks and frontmatter
 inbound = defaultdict(set)
-issues = {"orphans": [], "broken_links": [], "missing_frontmatter": [], "unknown_tags": []}
+issues = {"orphans": [], "broken_links": [], "missing_frontmatter": [], "unknown_tags": [], "missing_sources": []}
 
-# Load taxonomy from SCHEMA.md
+# Load taxonomy from SCHEMA.md — scoped to the "## Tag Taxonomy" section so non-tag bullets don't leak in
 schema = (WIKI / "SCHEMA.md").read_text()
-taxonomy = set(re.findall(r"^- ([a-zA-Z0-9\-_, ]+)", schema, re.M))
-taxonomy = {t.strip() for chunk in taxonomy for t in chunk.split(",")}
+taxonomy = set()
+in_section = False
+for line in schema.splitlines():
+    stripped = line.strip()
+    if stripped.startswith("## Tag Taxonomy"):
+        in_section = True
+        continue
+    if in_section and line.startswith("## "):
+        in_section = False
+    if in_section and stripped.startswith("- "):
+        for t in stripped.lstrip("- ").split(","):
+            t = t.strip()
+            if t:
+                taxonomy.add(t)
 
-for name, path in pages.items():
+URL_RE = re.compile(r"^https?://", re.I)
+
+def resolve_wikilink(target):
+    """Resolve [[target]] to a canonical rel-path. Returns rel-path | 'AMBIGUOUS:<paths>' | None."""
+    # Path-qualified form (contains slash): match exact rel-path
+    for cand in (target, target + ".md"):
+        if cand in pages:
+            return cand
+    # Bare-stem form: match against stem_to_paths
+    stem = target.split("/")[-1]
+    matches = stem_to_paths.get(stem, [])
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        return "AMBIGUOUS:" + "|".join(matches)
+    return None
+
+def raw_target_exists(target):
+    """Check that a raw/ wikilink or raw/ source path resolves to a file on disk."""
+    candidates = [WIKI / target, WIKI / (target + ".md")]
+    return any(p.exists() for p in candidates)
+
+for rel, path in pages.items():
     text = path.read_text()
-    # Parse frontmatter
     fm_match = re.match(r"^---\n(.*?)\n---", text, re.S)
     if not fm_match:
-        issues["missing_frontmatter"].append(str(path))
+        issues["missing_frontmatter"].append(rel)
         continue
     try:
         fm = yaml.safe_load(fm_match.group(1))
     except Exception:
-        issues["missing_frontmatter"].append(str(path))
+        issues["missing_frontmatter"].append(rel)
         continue
-    # Check required fields
-    required = {"title", "created", "updated", "type", "tags"}
-    if not required.issubset(fm or {}):
-        issues["missing_frontmatter"].append(f"{path} (missing: {required - set(fm or {})})")
-    # Check tags against taxonomy
-    for tag in (fm or {}).get("tags") or []:
+    if not isinstance(fm, dict):
+        issues["missing_frontmatter"].append(f"{rel} (frontmatter is not a mapping)")
+        continue
+    # Required frontmatter — `sources` is required; pages with no raw source still set `sources: []`
+    required = {"title", "created", "updated", "type", "tags", "sources"}
+    missing = required - set(fm)
+    if missing:
+        issues["missing_frontmatter"].append(f"{rel} (missing: {missing})")
+    # Tags against scoped taxonomy
+    for tag in fm.get("tags") or []:
         if tag not in taxonomy:
-            issues["unknown_tags"].append(f"{path}: {tag}")
+            issues["unknown_tags"].append(f"{rel}: {tag}")
+    # `sources: []` is the backfill backlog signal; URL entries are valid (allowed for query pages)
+    src = fm.get("sources")
+    if "sources" in fm and not src:
+        issues["missing_sources"].append(rel)
+    # raw/ entries inside `sources:` must exist on disk
+    if isinstance(src, list):
+        for s in src:
+            if isinstance(s, str) and s.startswith("raw/") and not raw_target_exists(s):
+                issues["broken_links"].append(f"{rel} (sources): missing raw target {s}")
     # Wikilinks
     for link in re.findall(r"\[\[([^\]]+)\]\]", text):
         target = link.split("|")[0].split("#")[0].strip()
-        if target in pages:
-            inbound[target].add(name)
-        else:
-            issues["broken_links"].append(f"{path} -> [[{target}]]")
+        if target.startswith("raw/"):
+            if not raw_target_exists(target):
+                issues["broken_links"].append(f"{rel} -> [[{target}]] (raw target not on disk)")
+            continue
+        resolved = resolve_wikilink(target)
+        if resolved is None:
+            issues["broken_links"].append(f"{rel} -> [[{target}]]")
+        elif resolved.startswith("AMBIGUOUS:"):
+            paths = resolved[len("AMBIGUOUS:"):]
+            issues["broken_links"].append(f"{rel} -> [[{target}]] (ambiguous, matches: {paths})")
+        elif resolved != rel:
+            inbound[resolved].add(rel)
 
 # Orphans: zero inbound links
-for name in pages:
-    if not inbound[name]:
-        issues["orphans"].append(str(pages[name]))
+for rel in pages:
+    if not inbound[rel]:
+        issues["orphans"].append(rel)
 
-# Index completeness
+# Index completeness — page is indexed if its stem OR rel-path appears in index.md
 index_text = (WIKI / "index.md").read_text()
-for name, path in pages.items():
-    if name not in index_text:
-        issues.setdefault("not_indexed", []).append(str(path))
+for rel, path in pages.items():
+    if path.stem not in index_text and rel not in index_text:
+        issues.setdefault("not_indexed", []).append(rel)
 
 # Report
+print(f"Pages: {len(pages)} | Taxonomy: {len(taxonomy)} tags")
+total = sum(len(v) for v in issues.values())
+print(f"Total issues: {total}")
 for k, v in issues.items():
     print(f"\n## {k} ({len(v)})")
     for item in v[:20]:
@@ -294,10 +354,10 @@ Other checks (add or run separately):
 - **Page size**: >1200 words → candidate for splitting via `compile` (see Page Sizing & Divide-and-Conquer)
 - **Log rotation**: not needed — daily `log/YYYYMMDD.md` files stay naturally small and git-diff-friendly
 
-Report findings grouped by severity: broken links > missing frontmatter > orphans > unknown tags > stale. Append to `log/<today-YYYYMMDD>.md`:
+Report findings grouped by severity: broken_links > missing_frontmatter > orphans > unknown_tags > missing_sources > stale. The `missing_sources` count must agree with the backfill backlog in `sources.md`; if they diverge, one of them is stale. Append to `log/<today-YYYYMMDD>.md`:
 ```
 ## [HH:MM] lint | N issues found
-- broken_links: X, orphans: Y, unknown_tags: Z
+- broken_links: X, orphans: Y, unknown_tags: Z, missing_sources: W
 ```
 
 ### 4. Compile — restructure existing wiki content

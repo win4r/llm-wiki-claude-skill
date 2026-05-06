@@ -162,13 +162,18 @@ One Obsidian vault, one backup target, isolated taxonomies.
 The SKILL.md embeds a self-contained Python lint script that checks:
 
 - Orphan pages (no inbound wikilinks)
-- Broken wikilinks (pointing to missing pages)
-- Missing frontmatter (required fields + YAML validity)
-- Unknown tags (not in SCHEMA.md taxonomy)
-- Index completeness (every page listed in index.md)
+- Broken wikilinks (pointing to missing pages, including `[[raw/...]]` targets that must exist on disk)
+- Ambiguous wikilinks when split-page subfolders introduce stem collisions
+- Missing frontmatter (required fields incl. `sources` + YAML validity, must parse to a mapping)
+- Unknown tags (not in the `## Tag Taxonomy` section of `SCHEMA.md` — scoped, won't accept stray bullets)
+- `missing_sources`: pages with `sources: []` — cross-references with the backfill backlog in `sources.md`
+- Raw-source path existence: every `raw/...` entry inside `sources:` must resolve to a file on disk
+- Index completeness (every page's stem or rel-path appears in `index.md`)
 - Page size (>1200 words → candidate for split via `compile`)
 
-Run with: ask Claude `lint wiki`. Zero external dependencies beyond Python 3 + PyYAML.
+URL entries in `sources:` (e.g. `https://arxiv.org/abs/...`) are accepted — useful for `type: query` pages that cite external work directly.
+
+Run with: ask Claude `lint wiki`. Zero external dependencies beyond Python 3 + PyYAML. The Codex adapter ships a more featureful standalone version at `adapters/codex/scripts/llm_wiki_lint.py` (additionally checks invalid_dates, low_outbound_links, oversized_pages, stale_pages, case_mismatch_links).
 
 ### Codex adapter regression tests
 
